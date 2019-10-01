@@ -1,0 +1,20 @@
+steps:
+- name: gcr.io/cloud-builders/docker
+  args:
+      - run
+      - --entrypoint=/bin/bash
+      - --net=host
+      - --volume=/var/run/docker.sock:/var/run/docker.sock
+      - --volume=/workspace:/workspace
+      - --workdir=/workspace
+      - gcr.io/$PROJECT_ID/kind
+      - -c
+      - |
+          kind create cluster --name=kind --config=kind-config.yaml
+          export KUBECONFIG="$(kind get kubeconfig-path --name=kind)"
+          kubectl apply -f deployment.yaml
+          kubectl wait --for=condition=available --timeout=600s deployment/nginx
+          kubectl get nodes -o wide
+          kubectl get pods,services --all-namespaces -o wide
+- name: gcr.io/cloud-builders/docker
+  args: ["run", "--net=host", "curlimages/curl:7.65.3", "localhost:30080"]
